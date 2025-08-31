@@ -58,9 +58,7 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [showControls, setShowControls] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [videoLoaded, setVideoLoaded] = useState(false)
 
   // new states from your custom player
@@ -107,7 +105,7 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
           await videoRef.current.play()
         }
         setIsPlaying(!isPlaying)
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to play video')
         setStatus('error')
       }

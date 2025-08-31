@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react'
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
-  const { user, loaded: userLoaded } = useSelector((state: RootState) => state.user)
+  const { loaded: userLoaded } = useSelector((state: RootState) => state.user)
   const hasFetchedUser = useRef(false)
   const isInitializing = useRef(true)
   const [loading, setLoading] = useState(true)
@@ -91,14 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  }, [dispatch, router, userLoaded])
+  }, [dispatch, router, userLoaded, fetchUserData])
 
   useEffect(() => {
-    (window as any).checkAuth = checkSessionAndFetchUser
+    (window as { checkAuth?: () => Promise<void> }).checkAuth = checkSessionAndFetchUser
     return () => {
-      delete (window as any).checkAuth
+      delete (window as { checkAuth?: () => Promise<void> }).checkAuth
     }
-  }, [])
+  }, [checkSessionAndFetchUser])
 
   if (loading) {
     return (

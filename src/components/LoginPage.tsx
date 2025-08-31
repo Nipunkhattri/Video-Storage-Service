@@ -26,20 +26,22 @@ export function LoginPage() {
         setEmail('')
         setPassword('')
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         if (error) throw error
         setSuccess('✅ Sign in successful! Redirecting...')
 
-        const { data: { session } } = await supabase.auth.getSession()
+        await supabase.auth.getSession()
         setTimeout(() => {
-          if ((window as any).checkAuth) (window as any).checkAuth()
+          if ((window as { checkAuth?: () => Promise<void> }).checkAuth) {
+            (window as { checkAuth?: () => Promise<void> }).checkAuth!()
+          }
         }, 500)
       }
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred')
     } finally {
       setLoading(false)
     }

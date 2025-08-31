@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
-import { Share2, Copy, Trash2, Eye, EyeOff, Clock, Infinity, AlertCircle } from 'lucide-react'
+import { Share2, Copy, Trash2, Clock, Infinity, AlertCircle } from 'lucide-react'
 import api from '@/lib/api'
 
 interface ShareLink {
@@ -35,7 +35,7 @@ export function ShareLinkManager({ videoId }: ShareLinkManagerProps) {
 
   useEffect(() => {
     fetchShareLinks()
-  }, [videoId])
+  }, [videoId, fetchShareLinks])
 
   const validateEmails = (emailString: string): string[] => {
     const emails = emailString.split(',').map(email => email.trim()).filter(Boolean)

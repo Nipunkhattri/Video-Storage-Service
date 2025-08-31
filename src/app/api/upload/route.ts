@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const videoId = uuidv4()
     const videoKey = `videos/${user.id}/${videoId}/${file.name}`
 
-    const { data: video, error: dbError } = await supabase
+    const { error: dbError } = await supabase
       .from('videos')
       .insert({
         id: videoId,

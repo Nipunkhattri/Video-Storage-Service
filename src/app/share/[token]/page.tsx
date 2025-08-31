@@ -1,19 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { VideoPlayer } from '@/components/VideoPlayer'
 import { VideoMetadata } from '@/components/VideoMetadata'
 import { Loader2, Lock, AlertTriangle } from 'lucide-react'
 
 interface SharedVideoData {
-  video: any
+  video: {
+    id: string;
+    title: string;
+    s3_key: string;
+    [key: string]: unknown;
+  };
   shareLink: {
-    id: string
-    visibility: 'PUBLIC' | 'PRIVATE'
-    expires_at: string | null
-    download_url: string
-  }
+    id: string;
+    visibility: 'PUBLIC' | 'PRIVATE';
+    expires_at: string | null;
+    download_url: string;
+  };
 }
 
 interface AccessError {
@@ -36,7 +41,7 @@ export default function SharedVideoPage() {
 
   useEffect(() => {
     fetchSharedVideo()
-  }, [token])
+  }, [token, fetchSharedVideo])
 
   const fetchSharedVideo = async (userEmail?: string) => {
     try {

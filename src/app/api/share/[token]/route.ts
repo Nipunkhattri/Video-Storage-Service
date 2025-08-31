@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
-import { getSignedDownloadUrl, sendEmail } from '@/lib/aws'
-import crypto from 'crypto'
+import { getSignedDownloadUrl } from '@/lib/aws'
 
 const OTP_TTL_MINUTES = 10
 

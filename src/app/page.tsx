@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState, AppDispatch } from '@/store/store'
 import { fetchUserVideos } from '@/store/slices/videosSlice'
-import { fetchCurrentUser } from '@/store/slices/userSlice'
+
 import { VideoUpload } from '@/components/VideoUpload'
 import { VideoDashboard } from '@/components/VideoDashboard'
 import { Header } from '@/components/Header'
@@ -13,14 +13,29 @@ import { VideoPlayer } from '@/components/VideoPlayer'
 import { VideoMetadata } from '@/components/VideoMetadata'
 import { X } from 'lucide-react'
 
+interface SharedVideoData {
+  video: {
+    id: string;
+    title: string;
+    s3_key: string;
+    [key: string]: unknown;
+  };
+  shareLink: {
+    id: string;
+    visibility: string;
+    expires_at: string | null;
+    download_url: string;
+  };
+}
+
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>()
   const { user, loading: userLoading, loaded: userLoaded } = useSelector((state: RootState) => state.user)
   const { videos, loading: videosLoading, loaded: videosLoaded } = useSelector((state: RootState) => state.videos)
-  const [lastFetchedUserId, setLastFetchedUserId] = useState<string | null>(null)
+
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [sharedToken, setSharedToken] = useState<string | null>(null)
-  const [sharedData, setSharedData] = useState<any | null>(null)
+  const [sharedData, setSharedData] = useState<SharedVideoData | null>(null)
   const [sharedLoading, setSharedLoading] = useState(false)
   const [sharedError, setSharedError] = useState<string | null>(null)
 
@@ -54,11 +69,11 @@ export default function Home() {
             const url = new URL(window.location.href)
             url.searchParams.delete('share')
             window.history.replaceState({}, '', url.toString())
-          } catch (e) {}
+          } catch (_e) {}
         }
-      } catch (err) {
-        setSharedError('Failed to load shared video')
-      } finally {
+              } catch (_err) {
+          setSharedError('Failed to load shared video')
+        } finally {
         setSharedLoading(false)
       }
     }
@@ -69,7 +84,7 @@ export default function Home() {
     if (user && !videosLoaded) {
       dispatch(fetchUserVideos(user.id))
     }
-  }, [dispatch, user?.id, videosLoaded])
+  }, [dispatch, user, videosLoaded])
 
   useEffect(() => {
     if (!user || !videosLoaded) return
@@ -143,8 +158,34 @@ export default function Home() {
               {sharedError && <div className="text-center py-8 text-red-600">{sharedError}</div>}
               {sharedData && (
                 <div className="space-y-6">
-                  <VideoPlayer video={sharedData.video} />
-                  <VideoMetadata video={sharedData.video} />
+                  <VideoPlayer video={{
+                    id: sharedData.video.id,
+                    title: sharedData.video.title,
+                    s3_key: sharedData.video.s3_key,
+                    user_id: '',
+                    filename: sharedData.video.title,
+                    size: 0,
+                    duration: null,
+                    status: 'READY',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    share_links: [],
+                    thumbnails: []
+                  }} />
+                  <VideoMetadata video={{
+                    id: sharedData.video.id,
+                    title: sharedData.video.title,
+                    s3_key: sharedData.video.s3_key,
+                    user_id: '',
+                    filename: sharedData.video.title,
+                    size: 0,
+                    duration: null,
+                    status: 'READY',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    share_links: [],
+                    thumbnails: []
+                  }} />
                 </div>
               )}
             </div>

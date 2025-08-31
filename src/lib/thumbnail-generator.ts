@@ -68,7 +68,6 @@ export async function generateThumbnails(
     }
 
   const videoStream = (Body as unknown) as PassThrough;
-    const thumbnailStream = new PassThrough();
 
     const ffmpegPromise = new Promise<Buffer>((resolve, reject) => {
       console.log('Spawning FFmpeg with path:', resolvedFfmpegPath);
@@ -90,14 +89,14 @@ export async function generateThumbnails(
 
       videoStream.on('error', (err) => {
         console.error('Video stream error:', err);
-        if ((err as any).code !== 'EPIPE') {
+        if ((err as { code?: string }).code !== 'EPIPE') {
           reject(err);
         }
       });
 
       ffmpegProcess.stdin.on('error', (err) => {
         console.error('FFmpeg stdin error:', err);
-        if ((err as any).code !== 'EPIPE') {
+        if ((err as { code?: string }).code !== 'EPIPE') {
           reject(err);
         }
       });

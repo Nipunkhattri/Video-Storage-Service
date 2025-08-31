@@ -163,7 +163,7 @@ export async function DELETE(
       )
     }
 
-    const { data: thumbnails, error: thumbsError } = await supabase
+    const { data: thumbnails } = await supabase
       .from('thumbnails')
       .select('s3_key')
       .eq('video_id', videoId)
@@ -188,12 +188,12 @@ export async function DELETE(
       console.error('S3 deletion error:', s3Err)
     }
 
-    const { error: deleteThumbnailsError } = await supabase
+    await supabase
       .from('thumbnails')
       .delete()
       .eq('video_id', videoId)
 
-    const { error: deleteShareLinksError } = await supabase
+    await supabase
       .from('share_links')
       .delete()
       .eq('video_id', videoId)
