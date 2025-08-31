@@ -69,9 +69,9 @@ export default function Home() {
             const url = new URL(window.location.href)
             url.searchParams.delete('share')
             window.history.replaceState({}, '', url.toString())
-          } catch (_e) {}
+          } catch {}
         }
-      } catch (_err) {
+      } catch {
         setSharedError('Failed to load shared video')
       } finally {
         setSharedLoading(false)

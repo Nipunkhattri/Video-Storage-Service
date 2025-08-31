@@ -166,7 +166,7 @@ export default function SharedVideoPage() {
                 />
               </div>
 
-              {error.allowedEmails?.length > 0 && (
+              {error.allowedEmails && error.allowedEmails.length > 0 && (
                 <p className="text-xs text-gray-500">
                   Allowed emails: <span className="font-medium">{error.allowedEmails.join(', ')}</span>
                 </p>

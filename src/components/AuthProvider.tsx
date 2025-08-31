@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       dispatch(clearUser())
     }
-  }, [fetchUserData])
+  }, [fetchUserData, dispatch])
 
   useEffect(() => {
     const getInitialSession = async () => {
