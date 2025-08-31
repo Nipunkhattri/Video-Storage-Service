@@ -1,11 +1,11 @@
 'use client'
 
-import { VideoWithShareLinks } from '@/types/database'
+import { VideoWithShareLinks, MinimalVideo } from '@/types/database'
 import { Download, Calendar, HardDrive, Clock, Link as LinkIcon, Image as ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 
 interface VideoMetadataProps {
-  video: VideoWithShareLinks
+  video: VideoWithShareLinks | MinimalVideo
 }
 
 export function VideoMetadata({ video }: VideoMetadataProps) {
@@ -48,37 +48,45 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-5">
-          <div className="flex items-center gap-3">
-            <HardDrive className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-800">File Size</p>
-              <p className="text-sm text-gray-600">{formatFileSize(video.size)}</p>
+          {video.size && (
+            <div className="flex items-center gap-3">
+              <HardDrive className="h-5 w-5 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">File Size</p>
+                <p className="text-sm text-gray-600">{formatFileSize(video.size)}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-800">Duration</p>
-              <p className="text-sm text-gray-600">{formatDuration(video.duration)}</p>
+          {video.duration && (
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">Duration</p>
+                <p className="text-sm text-gray-600">{formatDuration(video.duration)}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-800">Upload Date</p>
-              <p className="text-sm text-gray-600">{formatDate(video.created_at)}</p>
+          {video.created_at && (
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">Upload Date</p>
+                <p className="text-sm text-gray-600">{formatDate(video.created_at)}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-3">
-            <Download className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-800">Filename</p>
-              <p className="text-sm text-gray-600 break-all">{video.filename}</p>
+          {video.filename && (
+            <div className="flex items-center gap-3">
+              <Download className="h-5 w-5 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">Filename</p>
+                <p className="text-sm text-gray-600 break-all">{video.filename}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div>
@@ -108,7 +116,7 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
         </div>
       </div>
 
-      {video.share_links && video.share_links.length > 0 && (
+      {'share_links' in video && video.share_links && video.share_links.length > 0 && (
         <div className="mt-8 pt-6 border-t border-gray-200">
           <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
             <LinkIcon className="h-4 w-4 text-indigo-500" /> Share Links

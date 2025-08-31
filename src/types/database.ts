@@ -140,3 +140,14 @@ export interface VideoWithShareLinks extends Video {
   share_links: ShareLink[]
   thumbnails?: Thumbnail[]
 }
+
+export interface MinimalVideo {
+  id: string
+  title: string
+  s3_key: string
+  size?: number
+  duration?: number | null
+  created_at?: string
+  filename?: string
+  thumbnails?: Thumbnail[]
+}

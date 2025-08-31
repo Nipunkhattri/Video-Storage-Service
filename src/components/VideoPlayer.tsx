@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { VideoWithShareLinks } from '@/types/database'
+import { VideoWithShareLinks, MinimalVideo } from '@/types/database'
 import { Play, Pause, Volume2, VolumeX, Maximize, Download, AlertCircle } from 'lucide-react'
 import { fetchVideoStreamUrl, updateVideo } from '@/store/slices/videosSlice'
 import { useSelector, useDispatch } from 'react-redux'
@@ -49,7 +49,7 @@ function mediaErrorToMessage(error: MediaError | null): { code: number; message:
 }
 
 interface VideoPlayerProps {
-  video: VideoWithShareLinks
+  video: VideoWithShareLinks | MinimalVideo
 }
 
 export function VideoPlayer({ video }: VideoPlayerProps) {
@@ -64,6 +64,8 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   // new states from your custom player
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [meta, setMeta] = useState<{ duration: number; videoWidth: number; videoHeight: number } | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [showControls, setShowControls] = useState(false)
 
   const dispatch = useDispatch<AppDispatch>()
   const streamUrl = useSelector((state: RootState) => state.videos.streamUrls[video.id])
@@ -143,12 +145,15 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
     setVideoLoaded(true)
     if (videoRef.current) {
       try {
-        const videoToUpdate = { 
-          ...video, 
-          duration: videoRef.current.duration, 
-          thumbnails: video.thumbnails ?? [] 
+        // Only update video if it's a full video object (not a minimal shared video)
+        if ('user_id' in video && 'status' in video) {
+          const videoToUpdate = { 
+            ...video, 
+            duration: videoRef.current.duration, 
+            thumbnails: video.thumbnails ?? [] 
+          }
+          dispatch(updateVideo(videoToUpdate))
         }
-        dispatch(updateVideo(videoToUpdate))
       } catch {}
     }
   }
