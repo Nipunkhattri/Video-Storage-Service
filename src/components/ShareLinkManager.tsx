@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
 import { Share2, Copy, Trash2, Clock, Infinity, AlertCircle } from 'lucide-react'
@@ -33,10 +33,6 @@ export function ShareLinkManager({ videoId }: ShareLinkManagerProps) {
   })
   const [emailError, setEmailError] = useState('')
 
-  useEffect(() => {
-    fetchShareLinks()
-  }, [videoId, fetchShareLinks])
-
   const validateEmails = (emailString: string): string[] => {
     const emails = emailString.split(',').map(email => email.trim()).filter(Boolean)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -50,7 +46,7 @@ export function ShareLinkManager({ videoId }: ShareLinkManagerProps) {
     return emails
   }
 
-  const fetchShareLinks = async () => {
+  const fetchShareLinks = useCallback(async () => {
     if (!user) return
     try {
       const response = await api.get('/share-links')
@@ -58,7 +54,11 @@ export function ShareLinkManager({ videoId }: ShareLinkManagerProps) {
     } catch (error) {
       console.error('Failed to fetch share links:', error)
     }
-  }
+  }, [user, videoId])
+
+  useEffect(() => {
+    fetchShareLinks()
+  }, [fetchShareLinks])
 
   const createShareLink = async (e: React.FormEvent) => {
     e.preventDefault()

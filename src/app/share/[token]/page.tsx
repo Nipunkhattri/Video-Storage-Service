@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { VideoPlayer } from '@/components/VideoPlayer'
 import { VideoMetadata } from '@/components/VideoMetadata'
@@ -39,11 +39,7 @@ export default function SharedVideoPage() {
   const [otpCode, setOtpCode] = useState('')
   const [verifyingOtp, setVerifyingOtp] = useState(false)
 
-  useEffect(() => {
-    fetchSharedVideo()
-  }, [token, fetchSharedVideo])
-
-  const fetchSharedVideo = async (userEmail?: string) => {
+  const fetchSharedVideo = useCallback(async (userEmail?: string) => {
     try {
       const verified = false
       const url = userEmail
@@ -67,7 +63,11 @@ export default function SharedVideoPage() {
       setLoading(false)
       setSubmitting(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    fetchSharedVideo()
+  }, [fetchSharedVideo])
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -105,7 +105,7 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
           await videoRef.current.play()
         }
         setIsPlaying(!isPlaying)
-      } catch (_err) {
+      } catch {
         setError('Failed to play video')
         setStatus('error')
       }

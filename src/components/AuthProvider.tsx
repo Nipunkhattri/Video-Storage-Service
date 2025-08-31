@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
 import { supabase } from '@/lib/supabase'
@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   // Function to fetch user data
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const userData = await dispatch(fetchCurrentUser()).unwrap()
       dispatch(setUser(userData))
@@ -27,10 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dispatch(clearUser())
       throw error
     }
-  }
+  }, [dispatch])
 
   // Function to check session and fetch user data
-  const checkSessionAndFetchUser = async () => {
+  const checkSessionAndFetchUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user && !hasFetchedUser.current) {
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       dispatch(clearUser())
     }
-  }
+  }, [fetchUserData])
 
   useEffect(() => {
     const getInitialSession = async () => {

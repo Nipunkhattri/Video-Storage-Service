@@ -71,9 +71,9 @@ export default function Home() {
             window.history.replaceState({}, '', url.toString())
           } catch (_e) {}
         }
-              } catch (_err) {
-          setSharedError('Failed to load shared video')
-        } finally {
+      } catch (_err) {
+        setSharedError('Failed to load shared video')
+      } finally {
         setSharedLoading(false)
       }
     }

@@ -2,6 +2,7 @@
 
 import { VideoWithShareLinks } from '@/types/database'
 import { Download, Calendar, HardDrive, Clock, Link as LinkIcon, Image as ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 interface VideoMetadataProps {
   video: VideoWithShareLinks
@@ -88,9 +89,11 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {video.thumbnails.map((thumbnail) => (
                 <div key={thumbnail.id} className="relative group overflow-hidden rounded-lg shadow border">
-                  <img
+                  <Image
                     src={`/api/thumbnails/${thumbnail.s3_key}`}
                     alt={`Thumbnail ${thumbnail.position}`}
+                    width={96}
+                    height={96}
                     className="w-full h-24 object-cover transition group-hover:scale-105"
                   />
                   <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1 rounded">

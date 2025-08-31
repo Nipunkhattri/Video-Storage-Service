@@ -7,6 +7,7 @@ import { RootState, AppDispatch } from '@/store/store'
 import { fetchUserVideos } from '@/store/slices/videosSlice'
 import { VideoWithThumbnails } from '@/types/database'
 import { Play, Download, Share2, Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react'
+import Image from 'next/image'
 import api from '@/lib/api'
 
 interface VideoCardProps {
@@ -100,10 +101,11 @@ export function VideoCard({ video }: VideoCardProps) {
     <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col">
       <div className="relative aspect-video bg-gray-100">
         {video.thumbnails && video.thumbnails.length > 0 && !imageError ? (
-          <img
+          <Image
             src={`/api/thumbnails/${video.thumbnails[0].s3_key}`}
             alt={video.title}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            fill
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
             onError={() => setImageError(true)}
           />
         ) : (
