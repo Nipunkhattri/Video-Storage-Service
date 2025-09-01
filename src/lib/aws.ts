@@ -19,14 +19,29 @@ export const sesClient = new SESClient({
 })
 
 export const uploadToS3 = async (key: string, body: Buffer, contentType: string) => {
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET!,
-    Key: key,
-    Body: body,
-    ContentType: contentType,
-  })
-  
-  return await s3Client.send(command)
+  try {
+    console.log('Starting S3 upload for key:', key, 'size:', body.length)
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET!,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      // Add metadata for large files
+      Metadata: {
+        'uploaded-at': new Date().toISOString(),
+      },
+      // Optimize for large uploads
+      ServerSideEncryption: 'AES256',
+    })
+    
+    const result = await s3Client.send(command)
+    console.log('S3 upload successful, ETag:', result.ETag)
+    return result
+  } catch (error) {
+    console.error('S3 upload error:', error)
+    throw error
+  }
 }
 
 export const getSignedDownloadUrl = async (key: string, expiresIn = 3600) => {

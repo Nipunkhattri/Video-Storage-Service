@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/upload/route.ts": {
+      "maxDuration": 600
+    }
+  },
+  "regions": ["iad1"],
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=8192"
+    }
+  }
+}
