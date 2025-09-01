@@ -2,16 +2,21 @@
 export interface UploadError {
   code: string
   message: string
-  details?: any
+  details?: Error | unknown
   timestamp: Date
 }
 
-export const handleUploadError = (error: any, context: string): UploadError => {
+export const handleUploadError = (error: Error | unknown, context: string): UploadError => {
   const timestamp = new Date()
   console.error(`Upload error in ${context} at ${timestamp.toISOString()}:`, error)
   
+  // Type guard for Error objects
+  const isError = (err: unknown): err is Error => err instanceof Error
+  const hasProperty = (obj: unknown, prop: string): boolean => 
+    typeof obj === 'object' && obj !== null && prop in obj
+  
   // AWS S3 specific errors
-  if (error.name === 'NoSuchBucket') {
+  if (hasProperty(error, 'name') && (error as { name: string }).name === 'NoSuchBucket') {
     return {
       code: 'S3_BUCKET_NOT_FOUND',
       message: 'S3 bucket does not exist',
@@ -20,7 +25,7 @@ export const handleUploadError = (error: any, context: string): UploadError => {
     }
   }
   
-  if (error.name === 'AccessDenied') {
+  if (hasProperty(error, 'name') && (error as { name: string }).name === 'AccessDenied') {
     return {
       code: 'S3_ACCESS_DENIED',
       message: 'Access denied to S3 bucket',
@@ -30,17 +35,20 @@ export const handleUploadError = (error: any, context: string): UploadError => {
   }
   
   // Network/timeout errors
-  if (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
-    return {
-      code: 'NETWORK_TIMEOUT',
-      message: 'Network timeout during upload',
-      details: error,
-      timestamp
+  if (hasProperty(error, 'code')) {
+    const errorCode = (error as { code: string }).code
+    if (errorCode === 'ETIMEDOUT' || errorCode === 'ECONNRESET') {
+      return {
+        code: 'NETWORK_TIMEOUT',
+        message: 'Network timeout during upload',
+        details: error,
+        timestamp
+      }
     }
   }
   
   // Memory errors
-  if (error.message?.includes('heap out of memory')) {
+  if (isError(error) && error.message?.includes('heap out of memory')) {
     return {
       code: 'MEMORY_ERROR',
       message: 'Insufficient memory for file processing',
@@ -50,7 +58,9 @@ export const handleUploadError = (error: any, context: string): UploadError => {
   }
   
   // Database errors
-  if (error.code?.startsWith('PGRST')) {
+  if (hasProperty(error, 'code') && 
+      typeof (error as { code: unknown }).code === 'string' && 
+      (error as { code: string }).code.startsWith('PGRST')) {
     return {
       code: 'DATABASE_ERROR',
       message: 'Database operation failed',
@@ -62,7 +72,7 @@ export const handleUploadError = (error: any, context: string): UploadError => {
   // Generic error
   return {
     code: 'UNKNOWN_ERROR',
-    message: error.message || 'Unknown upload error',
+    message: isError(error) ? error.message : 'Unknown upload error',
     details: error,
     timestamp
   }

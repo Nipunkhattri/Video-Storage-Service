@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   console.log('Upload request started at:', startTime.toISOString())
   
   let videoId: string | null = null
-  let supabaseClient: any = null
+  let supabaseClient: ReturnType<typeof createServerSupabaseClient> | null = null
   
   try {
     const authHeader = request.headers.get('authorization')

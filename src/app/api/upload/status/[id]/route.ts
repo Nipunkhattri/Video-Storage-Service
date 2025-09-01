@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -27,10 +27,12 @@ export async function GET(
       )
     }
 
+    const { id } = await params
+
     const { data: video, error } = await supabase
       .from('videos')
       .select('id, title, status, size, created_at, updated_at')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 

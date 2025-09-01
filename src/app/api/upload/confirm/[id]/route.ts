@@ -4,7 +4,7 @@ import { videoProcessingQueue } from '@/lib/queue'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -28,7 +28,7 @@ export async function POST(
       )
     }
 
-    const videoId = params.id
+    const { id: videoId } = await params
 
     // Verify the video exists and belongs to the user
     const { data: video, error: fetchError } = await supabase

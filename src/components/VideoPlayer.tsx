@@ -380,9 +380,10 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [showControls, setShowControls] = useState(true)
+  // Note: showControls and isLoading are used in the UI components below
+  const [showControls] = useState(true) // Always show controls for now
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading] = useState(false) // Set to false since we handle loading via status
   const [videoLoaded, setVideoLoaded] = useState(false)
 
   // new states from your custom player
@@ -414,7 +415,6 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
       setStatus('loading')
       setError(null)
       setMeta(null)
-      setIsLoading(true)
       setVideoLoaded(false)
       videoRef.current.load()
     }
@@ -429,7 +429,8 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
           await videoRef.current.play()
         }
         setIsPlaying(!isPlaying)
-      } catch (err) {
+      } catch (error) {
+        console.error('Failed to play video:', error)
         setError('Failed to play video')
         setStatus('error')
       }
@@ -463,8 +464,8 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   }, [])
 
   const handleLoadedData = () => {
-    setIsLoading(false)
     setVideoLoaded(true)
+    setStatus('ready')
     if (videoRef.current) {
       try {
         // Only update video if it's a full video object (not a minimal shared video)
@@ -484,7 +485,6 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
     const mapped = mediaErrorToMessage(videoRef.current?.error ?? null)
     setError(mapped.message)
     setStatus('error')
-    setIsLoading(false)
     setVideoLoaded(false)
   }, [])
 
@@ -519,7 +519,6 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   const handleRetry = () => {
     setError(null)
     setStatus('loading')
-    setIsLoading(true)
     setVideoLoaded(false)
     if (videoRef.current && streamUrl) {
       videoRef.current.load()
