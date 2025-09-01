@@ -1,16 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { VideoWithShareLinks, MinimalVideo } from '@/types/database'
+import { VideoWithShareLinks } from '@/types/database'
 import { Play, Pause, Volume2, VolumeX, Maximize, Download, AlertCircle } from 'lucide-react'
 import { fetchVideoStreamUrl, updateVideo } from '@/store/slices/videosSlice'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState, AppDispatch } from '@/store/store'
 
-/**
- * Guess a MIME type from the URL extension.
- * Defaults to video/mp4 when uncertain.
- */
+
 function guessMimeType(url: string | undefined): string {
   if (!url) return 'video/mp4'
   const clean = url.split('?')[0]
@@ -49,7 +46,7 @@ function mediaErrorToMessage(error: MediaError | null): { code: number; message:
 }
 
 interface VideoPlayerProps {
-  video: VideoWithShareLinks | MinimalVideo
+  video: VideoWithShareLinks
 }
 
 export function VideoPlayer({ video }: VideoPlayerProps) {
@@ -58,22 +55,19 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [showControls, setShowControls] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [videoLoaded, setVideoLoaded] = useState(false)
 
-  // new states from your custom player
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [meta, setMeta] = useState<{ duration: number; videoWidth: number; videoHeight: number } | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [showControls, setShowControls] = useState(false)
 
   const dispatch = useDispatch<AppDispatch>()
   const streamUrl = useSelector((state: RootState) => state.videos.streamUrls[video.id])
 
-  // resolve mime type
   const resolvedType = useMemo(() => guessMimeType(streamUrl), [streamUrl])
 
-  // check support
   const canPlay = useMemo(() => {
     if (typeof document === 'undefined') return true
     const tester = document.createElement('video')
@@ -107,7 +101,7 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
           await videoRef.current.play()
         }
         setIsPlaying(!isPlaying)
-      } catch {
+      } catch (err) {
         setError('Failed to play video')
         setStatus('error')
       }
@@ -145,15 +139,12 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
     setVideoLoaded(true)
     if (videoRef.current) {
       try {
-        // Only update video if it's a full video object (not a minimal shared video)
-        if ('user_id' in video && 'status' in video) {
-          const videoToUpdate = { 
-            ...video, 
-            duration: videoRef.current.duration, 
-            thumbnails: video.thumbnails ?? [] 
-          }
-          dispatch(updateVideo(videoToUpdate))
+        const videoToUpdate = { 
+          ...video, 
+          duration: videoRef.current.duration, 
+          thumbnails: video.thumbnails ?? [] 
         }
+        dispatch(updateVideo(videoToUpdate))
       } catch {}
     }
   }
@@ -213,11 +204,11 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   }
 
   return (
-    <div className="bg-black rounded-xl overflow-hidden shadow-lg">
+    <div className="bg-black rounded-lg overflow-hidden">
       <div className="relative group">
         <video
           ref={videoRef}
-          className="w-full h-auto min-h-[220px] rounded-md bg-black"
+          className="w-full h-auto min-h-[200px] rounded-md bg-black"
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onLoadedData={handleLoadedData}
@@ -233,84 +224,68 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
           Your browser does not support the video tag.
         </video>
 
-        {/* 🔴 Error Overlay */}
         {status === 'error' && error && (
-          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 text-center text-white">
-            <AlertCircle className="h-14 w-14 mb-4 text-red-400" />
-            <p className="font-semibold text-lg">{error}</p>
-            <button
-              onClick={handleRetry}
-              className="mt-5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow hover:from-blue-700 hover:to-blue-600 transition"
-            >
-              Retry
-            </button>
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center p-4 text-center text-white">
+            <div>
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+              <p className="font-medium">{error}</p>
+              <button
+                onClick={handleRetry}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
 
         {status === 'loading' && !error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-white border-t-transparent mb-3"></div>
+          <div className="absolute inset-0 grid place-items-center bg-black/50 text-white">
             <span className="text-sm">Loading video…</span>
           </div>
         )}
 
         {!error && videoLoaded && (
           <div
-            className={`absolute inset-0 bg-black/0 group-hover:bg-black/20 transition duration-300 ease-in-out ${
+            className={`absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 ${
               showControls ? 'opacity-100' : 'opacity-0'
             }`}
           >
             <button
               onClick={handlePlayPause}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 p-5 rounded-full text-white shadow-lg transition"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 text-white p-4 rounded-full"
             >
-              {isPlaying ? <Pause className="h-9 w-9" /> : <Play className="h-9 w-9" />}
+              {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
             </button>
 
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-              <div className="mb-3">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+              <div className="mb-2">
                 <input
                   type="range"
                   min="0"
                   max={duration || 0}
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full h-1 accent-blue-500 cursor-pointer"
+                  className="w-full h-1 cursor-pointer"
                 />
               </div>
-
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-5 text-white">
-                  <button
-                    onClick={handlePlayPause}
-                    className="hover:text-blue-400 transition"
-                  >
+                <div className="flex items-center space-x-4">
+                  <button onClick={handlePlayPause} className="text-white">
                     {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                   </button>
-                  <button
-                    onClick={handleMute}
-                    className="hover:text-blue-400 transition"
-                  >
+                  <button onClick={handleMute} className="text-white">
                     {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   </button>
-                  <span className="text-xs md:text-sm font-medium">
+                  <span className="text-white text-sm">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>
-
-                <div className="flex items-center space-x-3 text-white">
-                  <button
-                    onClick={handleDownload}
-                    className="hover:text-blue-400 transition"
-                    title="Download"
-                  >
+                <div className="flex items-center space-x-2">
+                  <button onClick={handleDownload} className="text-white" title="Download">
                     <Download className="h-5 w-5" />
                   </button>
-                  <button
-                    onClick={handleFullscreen}
-                    className="hover:text-blue-400 transition"
-                    title="Fullscreen"
-                  >
+                  <button onClick={handleFullscreen} className="text-white" title="Fullscreen">
                     <Maximize className="h-5 w-5" />
                   </button>
                 </div>
@@ -320,12 +295,8 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
         )}
       </div>
 
-      <div className="mt-3 text-xs text-gray-400 px-2">
-        {!canPlay && (
-          <p className="italic text-red-400">
-            ⚠️ This browser can’t play {resolvedType}. Try MP4 (H.264).
-          </p>
-        )}
+      <div className="mt-2 text-xs text-muted-foreground">
+        {!canPlay && <p>Heads up: this browser can’t play {resolvedType}. Try MP4 (H.264).</p>}
         {meta && (
           <p>
             Duration: {meta.duration.toFixed(2)}s • {meta.videoWidth}×{meta.videoHeight}px
