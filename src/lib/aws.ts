@@ -72,6 +72,37 @@ export const getSignedDownloadUrl = async (key: string, expiresIn = 3600) => {
   }
 }
 
+export const getPresignedUploadUrl = async (key: string, contentType: string, expiresIn = 3600) => {
+  try {
+    console.log('Generating presigned upload URL for key:', key)
+    
+    if (!process.env.AWS_S3_BUCKET) {
+      throw new Error('AWS_S3_BUCKET environment variable is not set')
+    }
+    
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      throw new Error('AWS credentials are not properly configured')
+    }
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key,
+      ContentType: contentType,
+      Metadata: {
+        'uploaded-at': new Date().toISOString(),
+      },
+      ServerSideEncryption: 'AES256',
+    })
+    
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn })
+    console.log('Generated presigned upload URL successfully')
+    return signedUrl
+  } catch (error) {
+    console.error('Error generating presigned upload URL:', error)
+    throw error
+  }
+}
+
 export const deleteFromS3 = async (key: string) => {
   const command = new DeleteObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET!,

@@ -9,7 +9,7 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
 
 // Configure for larger uploads
 export const runtime = 'nodejs'
-export const maxDuration = 600 // 10 minutes for Vercel Pro, 10 seconds for hobby
+export const maxDuration = 300 // 5 minutes for Hobby plan, 800 for Pro
 
 export async function POST(request: NextRequest) {
   const startTime = new Date()

@@ -25,51 +25,95 @@ const initialState: UploadState = {
 export const uploadVideo = createAsyncThunk(
   'upload/uploadVideo',
   async ({ file, userId }: { file: File; userId: string }, { dispatch }) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('userId', userId)
-    
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
     
     if (!token) {
       throw new Error('No authentication token available')
     }
-    
-    const xhr = new XMLHttpRequest()
-    
-    return new Promise((resolve, reject) => {
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const progress = {
-            bytesUploaded: event.loaded,
-            totalBytes: event.total,
-            percentage: Math.round((event.loaded / event.total) * 100),
+
+    try {
+      // Step 1: Get presigned URL
+      console.log('Requesting presigned URL for file:', file.name)
+      const presignedResponse = await fetch('/api/upload/presigned', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        }),
+      })
+
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json()
+        throw new Error(errorData.error || 'Failed to get upload URL')
+      }
+
+      const { videoId, uploadUrl } = await presignedResponse.json()
+      console.log('Got presigned URL for video:', videoId)
+
+      // Step 2: Upload directly to S3 using presigned URL
+      const xhr = new XMLHttpRequest()
+      
+      return new Promise<string>((resolve, reject) => {
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const progress = {
+              bytesUploaded: event.loaded,
+              totalBytes: event.total,
+              percentage: Math.round((event.loaded / event.total) * 100),
+            }
+            dispatch(setUploadProgress(progress))
           }
-          dispatch(setUploadProgress(progress))
-        }
+        })
+        
+        xhr.addEventListener('load', async () => {
+          if (xhr.status === 200) {
+            console.log('S3 upload completed, confirming with server...')
+            
+            // Step 3: Confirm upload completion
+            try {
+              const confirmResponse = await fetch(`/api/upload/confirm/${videoId}`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              })
+
+              if (confirmResponse.ok) {
+                dispatch(fetchUserVideos(userId))
+                resolve('Upload completed successfully')
+              } else {
+                const errorData = await confirmResponse.json()
+                reject(new Error(errorData.error || 'Failed to confirm upload'))
+              }
+            } catch (confirmError) {
+              console.error('Confirmation error:', confirmError)
+              reject(new Error('Upload completed but confirmation failed'))
+            }
+          } else {
+            console.error('S3 upload failed with status:', xhr.status)
+            reject(new Error(`S3 upload failed: ${xhr.statusText}`))
+          }
+        })
+        
+        xhr.addEventListener('error', (error) => {
+          console.error('S3 upload error:', error)
+          reject(new Error('Direct upload to S3 failed'))
+        })
+        
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', file.type)
+        xhr.send(file)
       })
-      
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText)
-          dispatch(fetchUserVideos(userId))
-          resolve(response)
-        } else {
-          reject(new Error('Upload failed'))
-        }
-      })
-      
-      xhr.addEventListener('error', () => {
-        reject(new Error('Upload failed'))
-      })
-      
-      xhr.open('POST', '/api/upload')
-      
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-      
-      xhr.send(formData)
-    })
+    } catch (error) {
+      console.error('Upload process error:', error)
+      throw error
+    }
   }
 )
 

@@ -5,19 +5,8 @@ const nextConfig: NextConfig = {
     // Increase body size limit for file uploads
     serverComponentsExternalPackages: ['@aws-sdk/client-s3'],
   },
-  // Configure API route timeouts and limits
-  api: {
-    bodyParser: {
-      sizeLimit: '500mb',
-    },
-    responseLimit: false,
-    externalResolver: true,
-  },
-  // Increase timeout for serverless functions (if using Vercel)
-  serverRuntimeConfig: {
-    // Timeout in seconds (10 minutes)
-    maxDuration: 600,
-  },
+  // Note: API route config is handled in individual route files
+  // Timeout is configured per route using export const maxDuration
 };
 
 export default nextConfig;

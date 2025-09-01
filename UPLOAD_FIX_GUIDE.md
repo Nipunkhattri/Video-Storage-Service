@@ -2,41 +2,46 @@
 
 ## Issues Identified
 
-1. **Timeout Configuration**: No timeout settings for large file uploads
-2. **Memory Management**: Loading entire files into memory causing issues
-3. **Error Handling**: Insufficient error logging and handling
-4. **Database Connection**: Potential timeout during long uploads
+1. **Vercel Request Body Limit**: 4.5MB maximum request body size (your 150-200MB files exceed this)
+2. **Timeout Configuration**: Incorrect timeout settings (600s but Hobby plan only supports 300s)
+3. **Memory Management**: Loading entire files into serverless function memory
+4. **Error Handling**: Insufficient error logging and handling
+
+## Solution: Presigned URL Upload
+
+Instead of uploading through your API route, we now use **direct S3 uploads** via presigned URLs:
+
+1. **Client requests upload URL** → Your API generates presigned URL
+2. **Client uploads directly to S3** → Bypasses Vercel's 4.5MB limit
+3. **Client confirms completion** → API starts video processing
 
 ## Changes Made
 
-### 1. Next.js Configuration (`next.config.ts`)
-- Added API body size limit (500MB)
-- Configured serverless function timeout
-- Added external package configuration
+### 1. Vercel Configuration (`vercel.json`)
+- Fixed function timeout to 300 seconds (Hobby plan limit)
+- Reduced memory allocation to 4GB
 
-### 2. Vercel Configuration (`vercel.json`)
-- Set function timeout to 600 seconds (10 minutes)
-- Configured memory allocation
-- Set optimal region
+### 2. Next.js Configuration (`next.config.ts`)
+- Removed incorrect API configuration
+- Kept external packages configuration
 
-### 3. Upload Route Improvements (`src/app/api/upload/route.ts`)
-- Added comprehensive logging
-- Better error handling with specific error codes
-- Added upload metrics tracking
-- Proper cleanup on failures
+### 3. New API Routes
+- **`/api/upload/presigned`** - Generates presigned upload URLs
+- **`/api/upload/confirm/[id]`** - Confirms upload completion
+- **`/api/upload/status/[id]`** - Checks upload/processing status
 
-### 4. AWS Configuration (`src/lib/aws.ts`)
-- Enhanced S3 upload with metadata
-- Better error logging
+### 4. Enhanced AWS Library (`src/lib/aws.ts`)
+- Added `getPresignedUploadUrl` function
+- Better error handling for presigned URLs
 
-### 5. Error Handling (`src/lib/upload-utils.ts`)
-- Created centralized error handling
-- Added upload metrics logging
-- Specific error categorization
+### 5. Updated Upload Logic (`src/store/slices/uploadSlice.ts`)
+- 3-step upload process with presigned URLs
+- Direct S3 upload with progress tracking
+- Automatic confirmation and processing trigger
 
-## Environment Variables to Check
+## Environment Variables
 
-Ensure these are set in your hosting environment:
+Ensure these are set in your Vercel environment:
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -48,57 +53,73 @@ AWS_S3_BUCKET=your_s3_bucket_name
 UPSTASH_REDIS_URL=your_redis_url
 ```
 
+## AWS S3 CORS Configuration
+
+Add this CORS policy to your S3 bucket:
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST"],
+    "AllowedOrigins": ["https://your-domain.vercel.app", "http://localhost:3000"],
+    "ExposeHeaders": ["ETag"]
+  }
+]
+```
+
 ## Deployment Steps
 
-1. **For Vercel:**
+1. **Deploy to Vercel:**
    ```bash
    vercel --prod
    ```
 
-2. **For other platforms:**
-   - Ensure Node.js memory limit: `NODE_OPTIONS=--max-old-space-size=8192`
-   - Set function timeout to at least 600 seconds
-   - Configure body parser limits
+2. **Verify S3 bucket permissions** - Ensure your AWS credentials can generate presigned URLs
 
-## Monitoring and Debugging
+## Upload Flow
 
-1. **Check logs in your hosting platform**
-2. **Use the new status endpoint:**
-   ```
-   GET /api/upload/status/[videoId]
-   ```
-3. **Monitor upload metrics in console logs**
+### Old Flow (Failed)
+```
+Client → Vercel API (4.5MB limit) → S3
+```
 
-## Common Issues and Solutions
+### New Flow (Works for large files)
+```
+Client → Vercel API (get URL) → Direct S3 Upload → Confirm with API
+```
 
-### 1. "Function timeout after 10 seconds"
-- **Solution**: Update `vercel.json` with higher timeout
-- **Vercel Pro required** for timeouts > 10 seconds
+## Benefits
 
-### 2. "Out of memory" errors
-- **Solution**: Increase Node.js memory limit
-- **Alternative**: Implement chunked uploads
+✅ **No file size limits** (beyond your S3 limits)  
+✅ **Faster uploads** (direct to S3)  
+✅ **Lower server costs** (no file processing in serverless function)  
+✅ **Better error handling** (specific error codes)  
+✅ **Works on Hobby plan** (300s timeout is enough for URL generation)
 
-### 3. Database connection timeout
-- **Solution**: Check Supabase connection limits
-- **Alternative**: Use connection pooling
+## Testing the Fix
 
-### 4. S3 access denied
-- **Solution**: Verify AWS credentials and S3 bucket permissions
+1. **Test small file (50MB)** - Should work quickly
+2. **Test your 150-200MB files** - Should now work
+3. **Monitor browser network tab** - You'll see direct S3 uploads
 
-## Production Recommendations
+## Troubleshooting
 
-1. **Implement chunked uploads** for files > 100MB
-2. **Add upload progress tracking**
-3. **Set up monitoring and alerting**
-4. **Consider using presigned URLs** for direct S3 uploads
-5. **Implement retry mechanism** for failed uploads
+### "CORS policy error"
+- **Solution**: Add your domain to S3 CORS configuration
 
-## Testing
+### "Access Denied" on presigned URL
+- **Solution**: Verify AWS credentials have S3 permissions
 
-Test with different file sizes:
-- 50MB (should work quickly)
-- 150MB (your reported issue size)
-- 300MB (stress test)
+### "Upload confirmed but video not processing"
+- **Solution**: Check Redis queue connection and worker process
 
-Monitor console logs to identify bottlenecks.
+### Still getting timeout errors
+- **Solution**: You may need to upgrade to Vercel Pro for 800s timeout limit
+
+## Advanced Optimizations
+
+For even better performance, consider:
+1. **Multipart uploads** for files > 100MB
+2. **Upload progress indicators** 
+3. **Retry mechanisms** for failed uploads
+4. **Background upload with offline support**
