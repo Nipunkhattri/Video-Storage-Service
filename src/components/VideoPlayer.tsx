@@ -467,12 +467,15 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
     setVideoLoaded(true)
     if (videoRef.current) {
       try {
-        const videoToUpdate = { 
-          ...video, 
-          duration: videoRef.current.duration, 
-          thumbnails: video.thumbnails ?? [] 
+        // Only update video if it's a full video object (not a minimal shared video)
+        if ('user_id' in video && 'status' in video) {
+          const videoToUpdate = { 
+            ...video, 
+            duration: videoRef.current.duration, 
+            thumbnails: video.thumbnails ?? [] 
+          }
+          dispatch(updateVideo(videoToUpdate))
         }
-        dispatch(updateVideo(videoToUpdate))
       } catch {}
     }
   }
