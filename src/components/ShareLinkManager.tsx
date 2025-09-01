@@ -180,7 +180,7 @@ export function ShareLinkManager({ videoId }: ShareLinkManagerProps) {
                     setEmailError('')
                   }}
                   placeholder="email1@example.com, email2@example.com"
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-4 text-black py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     emailError ? 'border-red-300' : 'border-gray-300'
                   }`}
                 />
