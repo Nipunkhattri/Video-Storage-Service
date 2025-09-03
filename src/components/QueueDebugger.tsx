@@ -1,45 +1,70 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, Play } from 'lucide-react';
 
+interface JobData {
+  videoId?: string;
+  [key: string]: unknown;
+}
+
+interface QueueJob {
+  id: string | number;
+  data?: JobData;
+  failedReason?: string;
+  finishedOn?: number;
+  processedOn?: number;
+  timestamp?: number;
+  opts?: Record<string, unknown>;
+}
+
+interface JobCounts {
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed?: number;
+  paused?: number;
+}
+
+interface QueueInfo {
+  available: boolean;
+  waiting: QueueJob[];
+  active: QueueJob[];
+  completed: QueueJob[];
+  failed: QueueJob[];
+  counts: JobCounts;
+  recent_jobs?: QueueJob[];
+}
+
+interface WorkerInfo {
+  available: boolean;
+  is_running: boolean;
+}
+
+interface EnvironmentInfo {
+  node_version: string;
+  platform: string;
+  arch: string;
+  memory: {
+    total: string;
+    free: string;
+    used: string;
+  };
+  uptime: number;
+  cwd: string;
+}
+
 interface QueueStatus {
   timestamp: string;
   redis_connection: string;
   queues: {
-    video_processing: {
-      available: boolean;
-      waiting: any[];
-      active: any[];
-      completed: any[];
-      failed: any[];
-      counts: any;
-      recent_jobs?: any[];
-    };
-    email: {
-      available: boolean;
-      waiting: any[];
-      active: any[];
-      completed: any[];
-      failed: any[];
-      counts: any;
-    };
+    video_processing: QueueInfo;
+    email: QueueInfo;
   };
   workers: {
-    video_processing: {
-      available: boolean;
-      is_running: boolean;
-    };
-    email: {
-      available: boolean;
-      is_running: boolean;
-    };
+    video_processing: WorkerInfo;
+    email: WorkerInfo;
   };
-  environment: {
-    node_version: string;
-    platform: string;
-    arch: string;
-    cwd: string;
-    uptime: number;
-  };
+  environment: EnvironmentInfo;
 }
 
 export function QueueDebugger() {
@@ -232,7 +257,7 @@ export function QueueDebugger() {
             <div className="p-4 border rounded-lg">
               <h3 className="font-semibold mb-2">Recent Jobs</h3>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {queueStatus.queues.video_processing.recent_jobs.map((job: any) => (
+                {queueStatus.queues.video_processing.recent_jobs.map((job: QueueJob) => (
                   <div key={job.id} className="p-2 bg-gray-50 rounded text-sm">
                     <div className="flex justify-between items-start">
                       <div>

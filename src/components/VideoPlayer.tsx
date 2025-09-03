@@ -380,10 +380,9 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  // Note: showControls and isLoading are used in the UI components below
+  // Note: showControls is used in the UI components below
   const [showControls] = useState(true) // Always show controls for now
   const [error, setError] = useState<string | null>(null)
-  const [isLoading] = useState(false) // Set to false since we handle loading via status
   const [videoLoaded, setVideoLoaded] = useState(false)
 
   // new states from your custom player
