@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
-import { videoProcessingQueue } from '@/lib/queue'
+import { safeAddVideoProcessingJob } from '@/lib/queue'
 
 export async function POST(
   request: NextRequest,
@@ -63,13 +63,33 @@ export async function POST(
     }
 
     // Add to processing queue
-    await videoProcessingQueue.add('process-video', {
-      videoId,
-      videoKey: video.s3_key,
-      userId: user.id,
-    })
-
-    console.log(`Video ${videoId} upload confirmed and added to processing queue`)
+    try {
+      const queueResult = await safeAddVideoProcessingJob({
+        videoId,
+        videoKey: video.s3_key,
+        userId: user.id,
+      })
+      
+      if (queueResult.success) {
+        console.log(`Video ${videoId} upload confirmed and added to processing queue`)
+      } else {
+        console.warn(`Video ${videoId} upload confirmed but queue failed:`, queueResult.message)
+        return NextResponse.json({
+          success: true,
+          message: 'Upload confirmed, but video processing queue failed. Video will be processed later.',
+          warning: 'Processing queue unavailable'
+        })
+      }
+    } catch (queueError) {
+      console.error('Failed to add video to processing queue:', queueError)
+      // Even if queue fails, we should still return success since upload is confirmed
+      // The video can be processed later
+      return NextResponse.json({
+        success: true,
+        message: 'Upload confirmed, but video processing queue failed. Video will be processed later.',
+        warning: 'Processing queue unavailable'
+      })
+    }
 
     return NextResponse.json({
       success: true,
@@ -78,6 +98,16 @@ export async function POST(
 
   } catch (error) {
     console.error('Upload confirmation error:', error)
+    
+    // Log more specific error details
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
+    }
+    
     return NextResponse.json(
       { error: 'Failed to confirm upload' },
       { status: 500 }

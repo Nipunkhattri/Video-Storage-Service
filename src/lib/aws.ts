@@ -91,7 +91,7 @@ export const getPresignedUploadUrl = async (key: string, contentType: string, ex
       Metadata: {
         'uploaded-at': new Date().toISOString(),
       },
-      ServerSideEncryption: 'AES256',
+      // Removed ServerSideEncryption to fix presigned URL signature issue
     })
     
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn })

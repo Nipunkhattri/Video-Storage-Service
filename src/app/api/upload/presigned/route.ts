@@ -1,10 +1,41 @@
+/**
+ * Presigned URL Generation API Route
+ * 
+ * Generates presigned URLs for direct S3 uploads, bypassing Vercel's 4.5MB limit.
+ * This allows large video files to be uploaded directly to S3.
+ * 
+ * Flow:
+ * 1. Authenticate user
+ * 2. Validate file metadata
+ * 3. Create video record in database
+ * 4. Generate presigned S3 upload URL
+ * 5. Return URL and video ID to client
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 import { getPresignedUploadUrl } from '@/lib/aws'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
+  console.log('Presigned URL request received')
+  
   try {
+    // Validate AWS configuration first
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_S3_BUCKET) {
+      console.error('Missing AWS environment variables:', {
+        AWS_ACCESS_KEY_ID: !!process.env.AWS_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: !!process.env.AWS_SECRET_ACCESS_KEY,
+        AWS_S3_BUCKET: !!process.env.AWS_S3_BUCKET,
+        AWS_REGION: !!process.env.AWS_REGION,
+      })
+      return NextResponse.json(
+        { error: 'AWS configuration is incomplete. Please check environment variables.' },
+        { status: 500 }
+      )
+    }
+    
+    // Authenticate user via Bearer token
     const authHeader = request.headers.get('authorization')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -25,7 +56,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
-
+    
     const { fileName, fileSize, fileType } = await request.json()
 
     if (!fileName || !fileSize || !fileType) {
@@ -52,6 +83,8 @@ export async function POST(request: NextRequest) {
 
     const videoId = uuidv4()
     const videoKey = `videos/${user.id}/${videoId}/${fileName}`
+    
+    console.log('Creating database record for video:', { videoId, userId: user.id, fileName, fileSize })
 
     // Create database record
     const { error: dbError } = await supabase
@@ -63,7 +96,7 @@ export async function POST(request: NextRequest) {
         filename: fileName,
         s3_key: videoKey,
         size: fileSize,
-        status: 'PENDING_UPLOAD',
+        status: 'UPLOADING',
       })
       .select()
       .single()
@@ -71,20 +104,39 @@ export async function POST(request: NextRequest) {
     if (dbError) {
       console.error('Database insertion failed:', dbError)
       return NextResponse.json(
-        { error: 'Failed to create video record' },
+        { error: 'Failed to create video record', details: dbError.message },
         { status: 500 }
       )
     }
 
-    // Generate presigned URL for direct S3 upload
-    const presignedUrl = await getPresignedUploadUrl(videoKey, fileType, 3600) // 1 hour expiry
+    console.log('Database record created successfully, generating presigned URL...')
 
-    return NextResponse.json({
-      success: true,
-      videoId,
-      uploadUrl: presignedUrl,
-      message: 'Upload URL generated successfully',
-    })
+    // Generate presigned URL for direct S3 upload
+    try {
+      const presignedUrl = await getPresignedUploadUrl(videoKey, fileType, 3600) // 1 hour expiry
+      
+      console.log('Presigned URL generated successfully')
+      
+      return NextResponse.json({
+        success: true,
+        videoId,
+        uploadUrl: presignedUrl,
+        message: 'Upload URL generated successfully',
+      })
+    } catch (awsError) {
+      console.error('AWS presigned URL generation failed:', awsError)
+      
+      // Clean up the database record since AWS failed
+      await supabase
+        .from('videos')
+        .delete()
+        .eq('id', videoId)
+      
+      return NextResponse.json(
+        { error: 'Failed to generate presigned URL', details: awsError instanceof Error ? awsError.message : 'Unknown AWS error' },
+        { status: 500 }
+      )
+    }
 
   } catch (error) {
     console.error('Presigned URL generation error:', error)

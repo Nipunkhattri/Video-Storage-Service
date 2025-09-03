@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
-import { emailQueue } from '@/lib/queue'
+import { safeAddEmailJob } from '@/lib/queue'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
         if (user) {
           try {
-            await emailQueue.add('send-email', {
+            const emailResult = await safeAddEmailJob({
               to: email,
               subject: 'You have been invited to view a video',
               htmlBody: `
@@ -113,6 +113,10 @@ export async function POST(request: NextRequest) {
                 <a href="${process.env.NEXT_PUBLIC_APP_URL}/share/${shareToken}">View Video</a>
               `,
             })
+            
+            if (!emailResult.success) {
+              console.warn('Failed to queue email notification:', emailResult.message)
+            }
           } catch (emailError) {
             console.error(`Failed to send email notification to ${email}:`, emailError)
           }

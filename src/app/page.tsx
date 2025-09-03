@@ -1,3 +1,10 @@
+/**
+ * Home Page Component
+ * 
+ * Main dashboard for authenticated users showing video upload and management.
+ * Also handles shared video viewing via URL parameters.
+ */
+
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -13,6 +20,7 @@ import { VideoPlayer } from '@/components/VideoPlayer'
 import { VideoMetadata } from '@/components/VideoMetadata'
 import { X } from 'lucide-react'
 
+// Type definition for shared video data structure
 interface SharedVideoData {
   video: {
     id: string;

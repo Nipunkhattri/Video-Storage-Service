@@ -45,18 +45,43 @@ export async function generateThumbnails(
   videoKey: string,
   userId: string
 ): Promise<void> {
-  console.log(`Generating thumbnail for videoId: ${videoId}`);
+  console.log(`🎬 Generating thumbnail for videoId: ${videoId}`);
+  console.log('📝 Input parameters:', { videoId, videoKey, userId });
+
+  const supabase = createServerSupabaseClient();
+  
+  // Update video status to show thumbnail generation started
+  try {
+    const { error: statusError } = await supabase
+      .from('videos')
+      .update({ 
+        status: 'PROCESSING',
+        processing_stage: 'thumbnail_generation',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', videoId);
+
+    if (statusError) {
+      console.error('⚠️ Failed to update video status to processing:', statusError);
+    } else {
+      console.log('✅ Updated video status to processing');
+    }
+  } catch (error) {
+    console.error('⚠️ Error updating video status:', error);
+  }
 
   const resolvedFfmpegPath = getFfmpegPath();
   
-  console.log('Resolved FFmpeg path:', resolvedFfmpegPath);
-  console.log('Current working directory:', process.cwd());
-  console.log('Platform:', process.platform);
-  console.log('Architecture:', process.arch);
+  console.log('🔧 Resolved FFmpeg path:', resolvedFfmpegPath);
+  console.log('📁 Current working directory:', process.cwd());
+  console.log('💻 Platform:', process.platform);
+  console.log('🏗️ Architecture:', process.arch);
 
   const thumbnailKey = `thumbnails/${userId}/${videoId}/thumbnail.jpg`;
+  console.log('📍 Thumbnail key:', thumbnailKey);
 
   try {
+    console.log('📥 Downloading video from S3...');
     const getObjectCommand = new GetObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: videoKey,
@@ -64,13 +89,17 @@ export async function generateThumbnails(
     const { Body } = await s3Client.send(getObjectCommand);
 
     if (!Body) {
-      throw new Error('Video file not found in S3.');
+      const error = new Error('Video file not found in S3.');
+      console.error('❌', error.message);
+      throw error;
     }
+
+    console.log('✅ Video downloaded from S3 successfully');
 
   const videoStream = (Body as unknown) as PassThrough;
 
     const ffmpegPromise = new Promise<Buffer>((resolve, reject) => {
-      console.log('Spawning FFmpeg with path:', resolvedFfmpegPath);
+      console.log('🚀 Spawning FFmpeg with path:', resolvedFfmpegPath);
       
       const ffmpegProcess = spawn(
         resolvedFfmpegPath,
@@ -87,54 +116,65 @@ export async function generateThumbnails(
         }
       );
 
+      console.log('⚡ FFmpeg process spawned with PID:', ffmpegProcess.pid);
+
       videoStream.on('error', (err) => {
-        console.error('Video stream error:', err);
+        console.error('🔴 Video stream error:', err);
         if ((err as { code?: string }).code !== 'EPIPE') {
           reject(err);
         }
       });
 
       ffmpegProcess.stdin.on('error', (err) => {
-        console.error('FFmpeg stdin error:', err);
+        console.error('🔴 FFmpeg stdin error:', err);
         if ((err as { code?: string }).code !== 'EPIPE') {
           reject(err);
         }
       });
 
       const chunks: Buffer[] = [];
-      ffmpegProcess.stdout.on('data', (chunk) => chunks.push(chunk));
+      ffmpegProcess.stdout.on('data', (chunk) => {
+        console.log(`📊 Received ${chunk.length} bytes from FFmpeg`);
+        chunks.push(chunk);
+      });
 
       ffmpegProcess.on('error', (err) => {
-        console.error('FFmpeg process error:', err);
+        console.error('❌ FFmpeg process error:', err);
         reject(err);
       });
 
       ffmpegProcess.on('close', (code) => {
-        console.log(`FFmpeg process closed with code: ${code}`);
+        console.log(`🏁 FFmpeg process closed with code: ${code}`);
         if (code !== 0) {
           reject(new Error(`FFmpeg process exited with code ${code}`));
         } else {
+          const totalSize = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          console.log(`📊 Total thumbnail size: ${totalSize} bytes`);
           resolve(Buffer.concat(chunks));
         }
       });
 
       ffmpegProcess.on('exit', (code) => {
-        console.log(`FFmpeg process exited with code: ${code}`);
+        console.log(`🚪 FFmpeg process exited with code: ${code}`);
         if (code !== 0) {
           reject(new Error(`FFmpeg process exited with code ${code}`));
         }
       });
 
+      console.log('🔄 Starting video stream pipe to FFmpeg...');
       videoStream.pipe(ffmpegProcess.stdin, { end: false });
       
       videoStream.on('end', () => {
-        console.log('Video stream ended');
+        console.log('✅ Video stream ended, closing FFmpeg stdin');
         ffmpegProcess.stdin.end();
       });
     });
 
+    console.log('⏳ Waiting for thumbnail generation...');
     const thumbnailBuffer = await ffmpegPromise;
+    console.log(`✅ Thumbnail generated successfully (${thumbnailBuffer.length} bytes)`);
 
+    console.log('📤 Uploading thumbnail to S3...');
     const putObjectCommand = new PutObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: thumbnailKey,
@@ -142,7 +182,9 @@ export async function generateThumbnails(
       ContentType: 'image/jpeg',
     });
     await s3Client.send(putObjectCommand);
+    console.log('✅ Thumbnail uploaded to S3 successfully');
 
+    console.log('💾 Saving thumbnail record to database...');
     const supabase = createServerSupabaseClient();
     const { error: thumbnailError } = await supabase
       .from('thumbnails')
@@ -154,23 +196,48 @@ export async function generateThumbnails(
       });
 
     if (thumbnailError) {
-      console.error('Supabase thumbnail insert failed:', thumbnailError);
+      console.error('❌ Supabase thumbnail insert failed:', thumbnailError);
       throw thumbnailError;
     }
+    console.log('✅ Thumbnail record saved to database');
 
+    console.log('🔄 Updating video status to READY...');
     const { error: videoError } = await supabase
       .from('videos')
-      .update({ status: 'READY' })
+      .update({ 
+        status: 'READY',
+        processing_stage: null,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', videoId);
 
     if (videoError) {
-      console.error('Supabase video update failed:', videoError);
+      console.error('❌ Supabase video update failed:', videoError);
       throw videoError;
     }
+    console.log('✅ Video status updated to READY');
 
-    console.log(`Thumbnail generated and saved to S3 at key: ${thumbnailKey}`);
+    console.log(`🎉 Thumbnail generated and saved to S3 at key: ${thumbnailKey}`);
   } catch (error) {
-    console.error('Error generating thumbnail:', error);
+    console.error('💥 Error generating thumbnail:', error);
+    
+    // Update video status to failed
+    try {
+      const supabase = createServerSupabaseClient();
+      await supabase
+        .from('videos')
+        .update({ 
+          status: 'FAILED',
+          processing_stage: null,
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', videoId);
+      console.log('⚠️ Video status updated to FAILED');
+    } catch (statusError) {
+      console.error('❌ Failed to update video status to FAILED:', statusError);
+    }
+    
     throw error;
   }
 }

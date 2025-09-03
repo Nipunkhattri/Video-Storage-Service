@@ -5,7 +5,9 @@ import { useSelector, useDispatch } from 'react-redux'
 import { AppDispatch, RootState } from '@/store/store'
 import { useDropzone } from 'react-dropzone'
 import { uploadVideo, setCurrentFile } from '@/store/slices/uploadSlice'
+import { fetchUserVideos } from '@/store/slices/videosSlice'
 import { Upload, X, CheckCircle, Clock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export function VideoUpload() {
   const dispatch = useDispatch<AppDispatch>()
@@ -14,6 +16,34 @@ export function VideoUpload() {
   const { videos } = useSelector((state: RootState) => state.videos)
   const [processingVideos, setProcessingVideos] = useState<string[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
+
+  // Clean up any stale upload records on component mount
+  useEffect(() => {
+    const cleanupStaleUploads = async () => {
+      if (!user) return
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        
+        if (!token) return
+        
+        await fetch('/api/upload/cleanup', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+        
+        // Refresh videos after cleanup
+        dispatch(fetchUserVideos(user.id))
+      } catch (error) {
+        console.error('Error cleaning up stale uploads:', error)
+      }
+    }
+
+    cleanupStaleUploads()
+  }, [user, dispatch])
 
   // Track processing state
   useEffect(() => {
@@ -33,7 +63,13 @@ export function VideoUpload() {
     (acceptedFiles: File[]) => {
       const file = acceptedFiles[0]
       if (file && user) {
-        dispatch(setCurrentFile(file))
+        // Convert File to FileInfo to avoid Redux non-serializable value warning
+        const fileInfo = {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        }
+        dispatch(setCurrentFile(fileInfo))
         dispatch(uploadVideo({ file, userId: user.id }))
       }
     },
@@ -151,6 +187,7 @@ export function VideoUpload() {
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
+
     </div>
   )
 }

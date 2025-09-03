@@ -1,8 +1,8 @@
 # Video Storage Service
 
-A comprehensive video storage and sharing platform built with Next.js, TypeScript, and modern cloud technologies.
+A comprehensive video storage and sharing platform built with Next.js, TypeScript, Supabase, AWS S3, BullMQ, and Redis.
 
-## Features
+## ✨ Features
 
 ### 🎥 Video Management
 - **Drag & Drop Upload**: Intuitive file upload with real-time progress tracking
@@ -14,11 +14,9 @@ A comprehensive video storage and sharing platform built with Next.js, TypeScrip
 ### 🔐 Authentication & Security
 - **Supabase Auth**: Secure user authentication and session management
 - **User Isolation**: Each user can only access their own videos
-# Video Storage Service
+- **Secure Sharing**: Public/private share links with optional email restrictions
 
-A self-hostable video upload, processing, and sharing service built with Next.js, TypeScript, Supabase, AWS S3, BullMQ, and Redis.
-
-## Table of contents
+## 📋 Table of Contents
 - [Quick start](#quick-start)
 - [Scripts](#scripts)
 - [Environment variables](#environment-variables)
@@ -27,7 +25,6 @@ A self-hostable video upload, processing, and sharing service built with Next.js
 - [Background workers](#background-workers)
 - [File structure](#file-structure)
 - [Deployment](#deployment)
-- [Contributing](#contributing)
 - [License](#license)
 
 ## Quick start

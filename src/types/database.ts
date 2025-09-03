@@ -1,3 +1,10 @@
+/**
+ * Database Type Definitions
+ * 
+ * TypeScript interfaces matching the Supabase database schema.
+ * Provides type safety for all database operations.
+ */
+
 export interface Database {
   public: {
     Tables: {
@@ -124,14 +131,17 @@ export interface Database {
   }
 }
 
+// Exported type aliases for easier usage throughout the app
 export type Video = Database['public']['Tables']['videos']['Row']
 export type Thumbnail = Database['public']['Tables']['thumbnails']['Row']
 export type ShareLink = Database['public']['Tables']['share_links']['Row']
 export type User = Database['public']['Tables']['users']['Row']
 
+// Enum types for validation
 export type VideoStatus = 'UPLOADING' | 'PROCESSING' | 'READY'
 export type ShareLinkVisibility = 'PUBLIC' | 'PRIVATE'
 
+// Extended interfaces with related data
 export interface VideoWithThumbnails extends Video {
   thumbnails: Thumbnail[]
 }
@@ -141,6 +151,7 @@ export interface VideoWithShareLinks extends Video {
   thumbnails?: Thumbnail[]
 }
 
+// Minimal video interface for lightweight operations
 export interface MinimalVideo {
   id: string
   title: string

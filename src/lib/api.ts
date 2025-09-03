@@ -1,6 +1,15 @@
+/**
+ * API Client Configuration
+ * 
+ * Centralized HTTP client using Axios with automatic authentication.
+ * Automatically injects Supabase auth tokens into requests and handles
+ * authentication errors gracefully.
+ */
+
 import axios from 'axios'
 import { supabase } from './supabase'
 
+// Create base API client with default configuration
 const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -8,6 +17,7 @@ const api = axios.create({
   },
 })
 
+// Request interceptor: Automatically add auth token to requests
 api.interceptors.request.use(async (config) => {
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -29,17 +39,22 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
+// Response interceptor: Handle auth errors and logging
 api.interceptors.response.use(
+  // Success response handler
   (response) => {
     console.log('API response success:', response.config.url, response.status)
     return response
   },
+  // Error response handler
   async (error) => {
     console.log('API response error:', error.config?.url, error.response?.status, error.message)
     
+    // Handle authentication errors by signing out user
     if (error.response?.status === 401) {
       console.log('API request returned 401 - token may be invalid')
       
+      // Only sign out if not already on login page
       if (!window.location.pathname.includes('/login')) {
         await supabase.auth.signOut()
       }
